@@ -40,7 +40,7 @@ class DQN(nn.Module):
     
     # Save a model
     def save_model(self):
-        torch.save(self.state_dict(), f'./models/{time.gmtime(0)}' + self.filename + 'py.pth')
+        torch.save(self.state_dict(), './models/' + self.filename + 'py.pth')
     
     def load_model(self, path):
         self.load_state_dict(torch.load(path))

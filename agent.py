@@ -43,7 +43,7 @@ class DQNAgent(object):
         # self.device = torch.device('mps' if torch.backends.mps.is_available() else 'cpu')
 
         #initialize ReplayMemory
-        self.memory = ReplayMemory(10000)
+        self.memory = ReplayMemory(100000)
 
         # After how many training iterations the target network should update
         self.replace_target_cnt = replace_target_cnt
@@ -55,7 +55,7 @@ class DQNAgent(object):
 
         # If pretrained model of the modelname already exists, load it
         try:
-            self.policy_net.load_model('/Users/tariqgeorges/Documents/Riq Coding/Nov 24/game-rl/models/enduro_modelNONE.pth')
+            self.policy_net.load_model('/Users/tariqgeorges/Documents/Riq Coding/Nov 24/game-rl/models/enduro_modelpy.pth')
             print('loaded pretrained model')
         except:
             print('Didnt load model')
@@ -135,7 +135,8 @@ class DQNAgent(object):
     
     # Decrement epsilon 
     def dec_eps(self):
-        self.eps = max(self.eps_end, self.eps - (self.eps - self.eps_end) / self.eps_dec)
+        self.eps = self.eps_end + (self.eps - self.eps_end) * math.exp(-len(self.memory) / self.eps_dec)
+
         
     def play_games(self, num_eps, render=True):
         # Set network to eval mode
@@ -232,7 +233,7 @@ class DQNAgent(object):
         frames[0].save('episode.gif', format='GIF', append_images=frames[1:], save_all=True, duration=10, loop=0)
     
     # Plays num_eps amount of games, while optimizing the model after each episode
-    def train(self, num_eps=450, render=False):
+    def train(self, num_eps=500, render=False):
         scores = []
         avg_losses_per_episode = []
         max_score = 0
