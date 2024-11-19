@@ -15,11 +15,12 @@ def preprocess_env(env):
     env = AtariPreprocessing(env, frame_skip=1, grayscale_obs=True)
     env = FrameStackObservation(env, 4)
     return env
-# from transforms import Transforms
+
+
 
 class DQNAgent(object):
     def __init__(self, replace_target_cnt, env, state_space, action_space, tau=0.005, 
-                 model_name='enduro_model', gamma=0.99, eps_strt=0.1, 
+                 model_name='enduro_model', gamma=0.99, eps_strt=1.0, 
                  eps_end=0.001, eps_dec=5e-6, batch_size=128, lr=0.001):
         self.env = env
         self.state_space = state_space
@@ -28,9 +29,12 @@ class DQNAgent(object):
         self.GAMMA = gamma
         self.LR = lr
         self.eps = eps_strt
+        self.eps_start = eps_strt
         self.eps_dec = eps_dec
         self.eps_end = eps_end
         self.tau = tau
+        self.steps_done = 0
+        
 
         #Use GPU if available
         if torch.backends.mps.is_available():
@@ -43,7 +47,7 @@ class DQNAgent(object):
         # self.device = torch.device('mps' if torch.backends.mps.is_available() else 'cpu')
 
         #initialize ReplayMemory
-        self.memory = ReplayMemory(100000)
+        self.memory = ReplayMemory(50000)
 
         # After how many training iterations the target network should update
         self.replace_target_cnt = replace_target_cnt
@@ -55,7 +59,7 @@ class DQNAgent(object):
 
         # If pretrained model of the modelname already exists, load it
         try:
-            self.policy_net.load_model('/Users/tariqgeorges/Documents/Riq Coding/Nov 24/game-rl/models/enduro_modelpy.pth')
+            self.policy_net.load_model('/Users/tariqgeorges/Documents/Riq Coding/Nov 24/game-rl/models/enduro_modelpy0.pth')
             print('loaded pretrained model')
         except:
             print('Didnt load model')
@@ -135,8 +139,10 @@ class DQNAgent(object):
     
     # Decrement epsilon 
     def dec_eps(self):
-        self.eps = self.eps_end + (self.eps - self.eps_end) * math.exp(-len(self.memory) / self.eps_dec)
+        self.eps = self.eps_end + (self.eps_start - self.eps_end) * math.exp(-1. *self.steps_done / self.eps_dec)
 
+        # EPS_END + (EPS_START - EPS_END) * \
+        # math.exp(-1. * steps_done / EPS_DECAY)
         
     def play_games(self, num_eps, render=True):
         # Set network to eval mode
@@ -227,13 +233,13 @@ class DQNAgent(object):
     def save_gif(self, num_transitions):
         frames = []
         for i in range(self.memory.pointer - num_transitions, self.memory.pointer):
-            frame = Image.fromarray(self.memory.memory[i].raw_state, mode='RGB')
+            frame = Image.fromarray(self.memory.memory[i].state, mode='RGB')
             frames.append(frame)
         
         frames[0].save('episode.gif', format='GIF', append_images=frames[1:], save_all=True, duration=10, loop=0)
     
     # Plays num_eps amount of games, while optimizing the model after each episode
-    def train(self, num_eps=500, render=False):
+    def train(self, num_eps=350, render=False):
         scores = []
         avg_losses_per_episode = []
         max_score = 0
@@ -247,7 +253,7 @@ class DQNAgent(object):
             
             score = 0
             cnt = 0
-            while not done and cnt < max_steps:
+            while not done:
                 # Take epsilon greedy action
                 action = self.choose_action(state)
                 next_state, reward, done, _, info = self.env.step(action)
@@ -268,7 +274,7 @@ class DQNAgent(object):
                 max_score = score
 
             # Save a gif if episode is best so far
-            if score > 300 and score >= max_score:
+            if score > 100 and score >= max_score:
                 self.save_gif(cnt)
 
             scores.append(score)
@@ -278,12 +284,13 @@ class DQNAgent(object):
             # Train on as many transitions as there have been added in the episode
             print(f'Learning x{math.ceil(cnt/self.batch_size)}')
             eps_losses = self.learn(math.ceil(cnt/self.batch_size))
+            self.steps_done+=1
 
 
             avg_loss = np.mean(eps_losses) if eps_losses else 0
             avg_losses_per_episode.append(avg_loss)
 
-            print(f'Episode {i}/{num_eps}: \n\tScore: {score}\n\tAvg loss: {avg_loss:.4f}\
+            print(f'Episode {i}/{num_eps}:\n\tScore: {score}\n\tAvg loss: {avg_loss:.4f}\
             \n\tAvg score (past 100): {np.mean(scores[-100:])}\
             \n\tEpsilon: {self.eps}\n\tTransitions added: {cnt}')
 

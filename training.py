@@ -10,11 +10,11 @@ import matplotlib.pyplot as plt
 # EPS_DECAY controls the rate of exponential decay of epsilon, higher means a slower decay
 # TAU is the update rate of the target network
 # LR is the learning rate of the ``AdamW`` optimizer
-BATCH_SIZE = 32
+BATCH_SIZE = 128
 GAMMA = 0.96
 EPS_START = 0.9
 EPS_END = 0.01
-EPS_DECAY = 0.995
+EPS_DECAY = 50
 TAU = 0.002
 LR = 1e-4
 
@@ -24,7 +24,7 @@ env = preprocess_env(env)
 STATES = env.observation_space.shape
 ACTIONS = env.action_space.n
 
-agent = DQNAgent(replace_target_cnt=5000, env=env, state_space=STATES, action_space=ACTIONS, eps_strt=EPS_START, eps_dec=EPS_DECAY, batch_size=BATCH_SIZE, tau=TAU)
+agent = DQNAgent(replace_target_cnt=5000, env=env, state_space=STATES, action_space=ACTIONS, eps_strt=EPS_START, eps_dec=EPS_DECAY, batch_size=BATCH_SIZE, lr=LR)
 avg_losses_per_episode = agent.train()
 
 plt.figure(figsize=(10, 6))
@@ -34,6 +34,6 @@ plt.ylabel("Average Loss")
 plt.title("DQN Training Loss per Episode")
 plt.legend()
 plt.grid()
-plt.show()
+# plt.show()
 
 plt.savefig('Training_Loss.png')
